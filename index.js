@@ -185,6 +185,6 @@ app.get("/tokens/:branch", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(
-    `🚀 Server at http://localhost:${PORT} Use this link ot generate Token: http://localhost:3000/auth-url?branch=A`
+    `🚀 Use this link ot generate Token: https://zoomapi.onrender.com/auth-url?branch=A`
   );
 });
