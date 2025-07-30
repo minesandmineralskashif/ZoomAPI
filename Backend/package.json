@@ -1,0 +1,36 @@
+{
+  "name": "zoom-backend",
+  "version": "1.0.0",
+  "description": "Backend server to handle Zoom OAuth and create meetings per branch",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "zoom",
+    "oauth",
+    "backend",
+    "api",
+    "meetings"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.53.0",
+    "better-sqlite3": "^12.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "expo": "^53.0.20",
+    "express": "^4.21.2",
+    "node-fetch": "^2.7.0",
+    "react-native-toast-message": "^2.3.3",
+    "expo-clipboard": "~7.1.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "engines": {
+    "node": "22.17.1"
+  }
+}
