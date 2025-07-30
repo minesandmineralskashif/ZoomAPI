@@ -44,14 +44,40 @@ app.get("/", (req, res) => {
           <button onclick="createMeeting()">Create Zoom Meeting (Branch A)</button>
         </div>
 
+        <br/>
+
+        <div id="whatsapp-share" style="display: none;">
+          <p>Meeting link copied to clipboard ✅</p>
+          <a id="whatsapp-link" href="#" target="_blank">
+            <button style="background-color: green; color: white; padding: 10px 20px; border: none; cursor: pointer;">
+              Share on WhatsApp
+            </button>
+          </a>
+        </div>
+
         <script>
           async function createMeeting() {
-            const res = await fetch('/create-meeting-a', { method: 'POST' });
-            const data = await res.json();
-            if (data.join_url) {
-              window.open(data.join_url, '_blank');
-            } else {
-              alert("Error creating meeting: " + (data.error || "Unknown error"));
+            try {
+              const res = await fetch('/create-meeting-a', { method: 'POST' });
+              const data = await res.json();
+
+              if (data.join_url) {
+                // Open meeting in new tab
+                window.open(data.join_url, '_blank');
+
+                // Copy to clipboard
+                await navigator.clipboard.writeText(data.join_url);
+
+                // Show WhatsApp share button
+                const waLink = "https://wa.me/?text=" + encodeURIComponent("Join my Zoom meeting: " + data.join_url);
+                document.getElementById("whatsapp-link").href = waLink;
+                document.getElementById("whatsapp-share").style.display = "block";
+              } else {
+                alert("Error creating meeting: " + (data.error || "Unknown error"));
+              }
+            } catch (err) {
+              console.error(err);
+              alert("Failed to create meeting");
             }
           }
         </script>
@@ -59,6 +85,7 @@ app.get("/", (req, res) => {
     </html>
   `);
 });
+
 // Callback to exchange code for token
 app.get("/zoom/callback", async (req, res) => {
   const { code, state: branch } = req.query;
