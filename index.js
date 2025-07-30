@@ -23,7 +23,42 @@ app.get("/auth-url", (req, res) => {
   )}&state=${branch}`;
   res.json({ url });
 });
+app.get("/", (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Zoom Integration</title>
+      </head>
+      <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+        <h1>Zoom OAuth Demo</h1>
+        
+        <div>
+          <button onclick="window.location.href='/auth-url?branch=A'">
+            Authenticate Zoom (Branch A)
+          </button>
+        </div>
+        
+        <br/>
 
+        <div>
+          <button onclick="createMeeting()">Create Zoom Meeting (Branch A)</button>
+        </div>
+
+        <script>
+          async function createMeeting() {
+            const res = await fetch('/create-meeting-a', { method: 'POST' });
+            const data = await res.json();
+            if (data.join_url) {
+              window.open(data.join_url, '_blank');
+            } else {
+              alert("Error creating meeting: " + (data.error || "Unknown error"));
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
 // Callback to exchange code for token
 app.get("/zoom/callback", async (req, res) => {
   const { code, state: branch } = req.query;
