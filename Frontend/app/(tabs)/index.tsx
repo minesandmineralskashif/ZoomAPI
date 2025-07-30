@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,21 +11,24 @@ import {
   Platform,
   Alert,
   ToastAndroid,
+ 
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+
 import Clipboard from '@react-native-clipboard/clipboard';
 
-const BACKEND_URL = 'http://192.168.X.X:3000'; // 🔁 Replace with your backend IP
-const BRANCH = 'BranchA'; // 👈 Replace with your branch name
+const BACKEND_URL = 'zoomapi.onrender.com'; // ⬅️ Replace with your backend IP or Render URL
 
 export default function App() {
+  const [branch, setBranch] = useState<'A' | 'B' | 'C'>('A');
   const [authorized, setAuthorized] = useState(false);
   const [meetingUrl, setMeetingUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const checkZoomAuth = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/tokens/${BRANCH}`);
+      const res = await fetch(`${BACKEND_URL}/tokens/${branch}`);
       setAuthorized(res.ok);
     } catch {
       setAuthorized(false);
@@ -36,7 +39,7 @@ export default function App() {
   const handleZoomConnect = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/auth-url?branch=${BRANCH}`);
+      const res = await fetch(`${BACKEND_URL}/auth-url?branch=${branch}`);
       const data = await res.json();
       if (data.url) {
         Linking.openURL(data.url);
@@ -52,17 +55,16 @@ export default function App() {
   const handleCreateMeeting = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/create-meeting`, {
+      const res = await fetch(`${BACKEND_URL}/create-meeting-${branch.toLowerCase()}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch: BRANCH }),
       });
 
       const data = await res.json();
 
       if (data.join_url) {
         setMeetingUrl(data.join_url);
-        await shareMeetingLink(data.join_url);
+        Clipboard.setString(data.join_url);
+        showToast('Copied Zoom link to clipboard!');
       } else {
         showToast('Failed to create meeting', true);
       }
@@ -99,20 +101,25 @@ export default function App() {
       checkZoomAuth();
     });
     return () => subscription.remove();
-  }, []);
+  }, [branch]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mines and Minerals</Text>
+      <Text style={styles.title}>Zoom Integration</Text>
 
-      <Image
-        source={require('../assets/logo.png')} 
-        style={styles.logo}
-        resizeMode="contain"
-      />
+
+
+      <Text style={styles.subtitle}>Select Branch</Text>
+      <View style={styles.pickerWrapper}>
+        <Picker selectedValue={branch} onValueChange={(val) => setBranch(val)}>
+          <Picker.Item label="Branch A" value="A" />
+          <Picker.Item label="Branch B" value="B" />
+          <Picker.Item label="Branch C" value="C" />
+        </Picker>
+      </View>
 
       {authorized ? (
-        <Button title="Generate Zoom Link" onPress={handleCreateMeeting} />
+        <Button title="Create Zoom Meeting" onPress={handleCreateMeeting} />
       ) : (
         <Button title="Connect Zoom Account" onPress={handleZoomConnect} />
       )}
@@ -121,18 +128,28 @@ export default function App() {
 
       {meetingUrl && (
         <>
-          <Text
-            style={styles.link}
-            onPress={() => Linking.openURL(meetingUrl)}
-          >
+          <Text style={styles.link} onPress={() => Linking.openURL(meetingUrl)}>
             👉 Join Meeting in Browser
           </Text>
 
           <View style={styles.shareButtonWrapper}>
             <Button
-              title="📤 Share Meeting Link"
+              title="📤 Share Link"
               onPress={() => shareMeetingLink(meetingUrl)}
               color="#28a745"
+            />
+          </View>
+
+          <View style={styles.shareButtonWrapper}>
+            <Button
+              title="💬 Share on WhatsApp"
+              color="#25D366"
+              onPress={() => {
+                const waUrl = `https://wa.me/?text=${encodeURIComponent(
+                  'Join Zoom meeting: ' + meetingUrl
+                )}`;
+                Linking.openURL(waUrl);
+              }}
             />
           </View>
         </>
@@ -145,20 +162,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
     backgroundColor: '#fff',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 12,
     textAlign: 'center',
+  },
+  subtitle: {
+    marginTop: 20,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  pickerWrapper: {
+    marginTop: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
   logo: {
     width: 160,
     height: 160,
     alignSelf: 'center',
-    marginBottom: 32,
+    marginVertical: 30,
   },
   link: {
     marginTop: 20,
