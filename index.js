@@ -48,11 +48,11 @@ app.get("/", (req, res) => {
         <br/>
 
         <div>
-          <button onclick="createMeeting('A')">Create Meeting (Branch A)</button>
+          <button onclick="createMeeting('A')">Create Meeting (Branch A MITDGMM)</button>
         </div>
 
         <div>
-          <button onclick="createMeeting('B')">Create Meeting (Branch B)</button>
+          <button onclick="createMeeting('B')">Create Meeting (Branch B IT Branch )</button>
         </div>
 
         <br/>
