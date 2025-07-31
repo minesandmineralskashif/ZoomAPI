@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
         <title>Zoom Integration</title>
       </head>
       <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-        <h1 Mines & Mineral Zoom Meeting Creation</h1>
+        <h1>Zoom Meeting Mines and Minerals</h1>
         
         <div>
           <button onclick="window.location.href='/auth-url?branch=A'">
