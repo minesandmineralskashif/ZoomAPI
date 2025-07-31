@@ -1,0 +1,65 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f4f8fb;
+  text-align: center;
+  padding-top: 50px;
+  margin: 0;
+}
+
+h1 {
+  color: #222;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  margin: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+#whatsapp-link button {
+  background-color: #25D366;
+  font-weight: bold;
+}
+
+#whatsapp-share p {
+  color: green;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 600px) {
+  button {
+    width: 80%;
+    font-size: 1.1rem;
+  }
+}
+
+.logo {
+  width: 120px;
+  height: auto;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 120px;
+  height: auto;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border-radius: 10px; /* optional */
+}

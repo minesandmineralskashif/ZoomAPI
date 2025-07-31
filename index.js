@@ -8,6 +8,7 @@ const { getTokens, saveTokens } = require("./supabaseClient");
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(express.static(__dirname)); // Serves static files like style.css
 
 const REDIRECT_URI = process.env.ZOOM_REDIRECT_URI;
 
@@ -29,8 +30,12 @@ app.get("/", (req, res) => {
     <html>
       <head>
         <title>Zoom Integration</title>
+        
+        <link rel="stylesheet" href="/styles.css" />
       </head>
-      <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+      <body>
+        <img src="/logo.jpg" alt="Zoom Integration Logo" class="logo" />
+
         <h1>Zoom Meeting Mines and Minerals</h1>
         
         <div>
