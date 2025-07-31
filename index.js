@@ -35,13 +35,13 @@ app.get("/", (req, res) => {
         
         <div>
           <button onclick="window.location.href='/auth-url?branch=A'">
-            Authenticate Zoom (Branch A)
+            Authenticate Zoom (Branch A MITDGMM )
           </button>
         </div>
         
         <div>
           <button onclick="window.location.href='/auth-url?branch=B'">
-            Authenticate Zoom (Branch B)
+            Authenticate Zoom (Branch B IT Branch)
           </button>
         </div>
 
