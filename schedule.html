@@ -2,70 +2,101 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Zoom Scheduler - Home</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Schedule Zoom Meeting</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2rem;
+        max-width: 600px;
+        margin: auto;
+        background-color: #f9f9f9;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+      }
+      input,
+      button {
+        padding: 0.5rem;
+        margin-top: 0.3rem;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 1.5rem;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #response {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        border-radius: 4px;
+      }
+    </style>
   </head>
   <body>
-    <img class="logo" src="logo.png" alt="Logo" />
+    <h2>Schedule Zoom Meeting</h2>
 
-    <h1>Zoom Meeting Scheduler</h1>
+    <label for="topic">Meeting Topic</label>
+    <input id="topic" type="text" placeholder="Enter topic" required />
 
-    <button
-      onclick="window.location.href='https://zoomapi.onrender.com/zoom/auth/A'"
-    >
-      Authenticate Branch A
-    </button>
+    <label for="start_time">Start Time</label>
+    <input id="start_time" type="datetime-local" required />
 
-    <button
-      onclick="window.location.href='https://zoomapi.onrender.com/zoom/auth/B'"
-    >
-      Authenticate Branch B
-    </button>
+    <button onclick="scheduleMeeting('a')">Schedule Meeting (Branch A)</button>
+    <button onclick="scheduleMeeting('b')">Schedule Meeting (Branch B)</button>
 
-    <hr />
-
-    <button onclick="createInstant('A')">
-      Start Instant Meeting (Branch A)
-    </button>
-    <button onclick="createInstant('B')">
-      Start Instant Meeting (Branch B)
-    </button>
-
-    <hr />
-
-    <button onclick="window.location.href='schedule.html'">
-      Go to Scheduler
-    </button>
-
-    <div id="whatsapp-share" style="display: none; margin-top: 10px">
-      <a id="whatsapp-link" target="_blank">Share via WhatsApp</a>
-    </div>
+    <div id="response"></div>
 
     <script>
-      const BASE = "https://zoomapi.onrender.com";
+      async function scheduleMeeting(branch) {
+        const topic = document.getElementById("topic").value;
+        const startTimeInput = document.getElementById("start_time").value;
+        const responseBox = document.getElementById("response");
+        responseBox.innerHTML = "";
+        responseBox.style.backgroundColor = "";
 
-      async function createInstant(branch) {
-        const res = await fetch(
-          `${BASE}/create-meeting-${branch.toLowerCase()}`,
-          {
+        if (!topic || !startTimeInput) {
+          responseBox.textContent = "Please enter topic and start time.";
+          responseBox.style.backgroundColor = "#ffe0e0";
+          return;
+        }
+
+        // Convert local datetime to ISO (Zoom expects UTC ISO)
+        const startTime = new Date(startTimeInput).toISOString();
+
+        const url =
+          branch === "a"
+            ? "https://zoomapi.onrender.com/create-meeting-a"
+            : "https://zoomapi.onrender.com/create-meeting-b";
+
+        try {
+          const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          }
-        );
+            body: JSON.stringify({ topic, start_time: startTime }),
+          });
 
-        const data = await res.json();
-        if (data.join_url) {
-          window.open(data.join_url, "_blank");
-          await navigator.clipboard.writeText(data.join_url);
-          const waLink = `https://wa.me/?text=${encodeURIComponent(
-            "Join Zoom: " + data.join_url
-          )}`;
-          document.getElementById("whatsapp-link").href = waLink;
-          document.getElementById("whatsapp-share").style.display = "block";
-        } else {
-          alert("Failed to create meeting");
-          console.error(data);
+          const data = await res.json();
+
+          if (res.ok && data.join_url) {
+            responseBox.innerHTML = `
+            <strong>Meeting Scheduled!</strong><br/>
+            <a href="${data.join_url}" target="_blank">${data.join_url}</a>
+          `;
+            responseBox.style.backgroundColor = "#e0ffe0";
+          } else {
+            throw new Error(data.error || "Failed to schedule meeting.");
+          }
+        } catch (err) {
+          responseBox.textContent = "Error: " + err.message;
+          responseBox.style.backgroundColor = "#ffe0e0";
         }
       }
     </script>
