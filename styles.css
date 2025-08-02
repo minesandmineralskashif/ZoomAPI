@@ -54,12 +54,5 @@ button:active {
   height: auto;
   margin-top: 20px;
   margin-bottom: 20px;
-}
-
-.logo {
-  width: 120px;
-  height: auto;
-  margin-top: 20px;
-  margin-bottom: 20px;
-  border-radius: 10px; /* optional */
+  border-radius: 10px;
 }

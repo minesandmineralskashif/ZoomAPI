@@ -3,8 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <title>Zoom Scheduler</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <img src="logo.png" alt="Logo" class="logo" />
+
     <h1>Create Zoom Meeting</h1>
 
     <div>
@@ -20,7 +23,10 @@
     </div>
 
     <div id="whatsapp-share" style="display: none; margin-top: 10px">
-      <a id="whatsapp-link" target="_blank">Share via WhatsApp</a>
+      <p>Meeting link copied to clipboard. You can also:</p>
+      <a id="whatsapp-link" target="_blank">
+        <button>Share via WhatsApp</button>
+      </a>
     </div>
 
     <script>
@@ -45,6 +51,7 @@
         if (data.join_url) {
           window.open(data.join_url, "_blank");
           await navigator.clipboard.writeText(data.join_url);
+
           const waLink =
             "https://wa.me/?text=" +
             encodeURIComponent("Join my Zoom meeting: " + data.join_url);
