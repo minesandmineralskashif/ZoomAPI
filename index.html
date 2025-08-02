@@ -2,52 +2,70 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Zoom Meeting Control</title>
+    <title>Zoom Scheduler - Home</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <h1>Zoom Meeting Portal</h1>
+    <img class="logo" src="logo.png" alt="Logo" />
 
-    <!-- Auth Buttons -->
-    <div>
-      <h2>Authenticate Zoom</h2>
-      <a href="/zoom/auth/A">
-        <button>Login with Zoom (Branch A)</button>
-      </a>
-      <a href="/zoom/auth/B">
-        <button>Login with Zoom (Branch B)</button>
-      </a>
-    </div>
+    <h1>Zoom Meeting Scheduler</h1>
 
-    <!-- Instant Meeting -->
-    <div>
-      <h2>Start Instant Meeting</h2>
-      <button onclick="startMeeting('A')">Start for Branch A</button>
-      <button onclick="startMeeting('B')">Start for Branch B</button>
-    </div>
+    <button
+      onclick="window.location.href='https://zoomapi.onrender.com/zoom/auth/A'"
+    >
+      Authenticate Branch A
+    </button>
 
-    <!-- Scheduled Meeting -->
-    <div>
-      <h2>Schedule a Meeting</h2>
-      <a href="/schedule.html"><button>Schedule Meeting</button></a>
+    <button
+      onclick="window.location.href='https://zoomapi.onrender.com/zoom/auth/B'"
+    >
+      Authenticate Branch B
+    </button>
+
+    <hr />
+
+    <button onclick="createInstant('A')">
+      Start Instant Meeting (Branch A)
+    </button>
+    <button onclick="createInstant('B')">
+      Start Instant Meeting (Branch B)
+    </button>
+
+    <hr />
+
+    <button onclick="window.location.href='schedule.html'">
+      Go to Scheduler
+    </button>
+
+    <div id="whatsapp-share" style="display: none; margin-top: 10px">
+      <a id="whatsapp-link" target="_blank">Share via WhatsApp</a>
     </div>
 
     <script>
-      async function startMeeting(branch) {
-        const res = await fetch(`/create-meeting-${branch.toLowerCase()}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
+      const BASE = "https://zoomapi.onrender.com";
+
+      async function createInstant(branch) {
+        const res = await fetch(
+          `${BASE}/create-meeting-${branch.toLowerCase()}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          }
+        );
 
         const data = await res.json();
         if (data.join_url) {
           window.open(data.join_url, "_blank");
           await navigator.clipboard.writeText(data.join_url);
-
-          alert("Join URL copied to clipboard!");
+          const waLink = `https://wa.me/?text=${encodeURIComponent(
+            "Join Zoom: " + data.join_url
+          )}`;
+          document.getElementById("whatsapp-link").href = waLink;
+          document.getElementById("whatsapp-share").style.display = "block";
         } else {
-          alert("Failed to create meeting.");
+          alert("Failed to create meeting");
+          console.error(data);
         }
       }
     </script>

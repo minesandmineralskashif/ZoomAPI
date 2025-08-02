@@ -1,179 +1,166 @@
 // index.js
-import express from "express";
-import dotenv from "dotenv";
-import fetch from "node-fetch";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { createClient } from "@supabase/supabase-js";
+require("dotenv").config();
+const express = require("express");
+const fetch = require("node-fetch");
+const cors = require("cors");
+const path = require("path");
+const { getTokens, saveTokens } = require("./supabaseClient");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config();
 const app = express();
+app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(__dirname)); // serve html, css, logo, etc.
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY.trim()
-);
+const REDIRECT_URI = process.env.ZOOM_REDIRECT_URI;
 
-const zoomApps = {
-  A: {
-    client_id: process.env.ZOOM_CLIENT_ID,
-    client_secret: process.env.ZOOM_CLIENT_SECRET,
-    redirect_uri: process.env.ZOOM_REDIRECT_URI,
-    token_table: "tokens_branch_a",
-  },
-  B: {
-    client_id: process.env.ZOOM2_CLIENT_ID,
-    client_secret: process.env.ZOOM2_CLIENT_SECRET,
-    redirect_uri: process.env.ZOOM_REDIRECT_URI,
-    token_table: "tokens_branch_b",
-  },
-};
-
-function getZoomApp(branch) {
-  return zoomApps[branch];
+// Zoom credentials per branch
+function getZoomCredentials(branch) {
+  if (branch === "B") {
+    return {
+      clientId: process.env.ZOOM2_CLIENT_ID,
+      clientSecret: process.env.ZOOM2_CLIENT_SECRET,
+    };
+  }
+  return {
+    clientId: process.env.ZOOM_CLIENT_ID,
+    clientSecret: process.env.ZOOM_CLIENT_SECRET,
+  };
 }
 
+// Serve main page
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.get("/schedule", (req, res) => {
+// Serve scheduler page
+app.get("/schedule.html", (req, res) => {
   res.sendFile(path.join(__dirname, "schedule.html"));
 });
 
+// Redirect to Zoom for OAuth
 app.get("/zoom/auth/:branch", (req, res) => {
-  const { branch } = req.params;
-  const { client_id, redirect_uri } = getZoomApp(branch);
-  const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${client_id}&redirect_uri=${redirect_uri}`;
+  const branch = req.params.branch.toUpperCase();
+  const { clientId } = getZoomCredentials(branch);
+  const state = branch;
+  const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+    REDIRECT_URI
+  )}&state=${state}`;
   res.redirect(authUrl);
 });
 
+// OAuth callback
 app.get("/zoom/callback", async (req, res) => {
-  const { code } = req.query;
-  const branch = req.query.state || "A"; // fallback to A
-  const { client_id, client_secret, redirect_uri, token_table } =
-    getZoomApp(branch);
+  const { code, state: branch } = req.query;
+  if (!code || !branch) return res.status(400).send("Missing code or branch");
 
-  const tokenRes = await fetch("https://zoom.us/oauth/token", {
-    method: "POST",
-    headers: {
-      Authorization:
-        "Basic " +
-        Buffer.from(`${client_id}:${client_secret}`).toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri,
-    }),
-  });
-
-  const tokens = await tokenRes.json();
-  await supabase.from(token_table).delete().neq("id", 0); // clear table
-  await supabase.from(token_table).insert(tokens);
-  res.send("Zoom Auth Successful. You may close this tab.");
-});
-
-async function getTokens(branch) {
-  const { token_table } = getZoomApp(branch);
-  const { data } = await supabase.from(token_table).select("*").single();
-  return data;
-}
-
-async function refreshTokenIfNeeded(branch) {
-  const tokens = await getTokens(branch);
-  const { client_id, client_secret, redirect_uri, token_table } =
-    getZoomApp(branch);
-
-  if (!tokens)
-    throw new Error("Tokens not found. Please authenticate Zoom first.");
-
-  const newTokenRes = await fetch("https://zoom.us/oauth/token", {
-    method: "POST",
-    headers: {
-      Authorization:
-        "Basic " +
-        Buffer.from(`${client_id}:${client_secret}`).toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: tokens.refresh_token,
-    }),
-  });
-
-  const newTokens = await newTokenRes.json();
-  await supabase.from(token_table).delete().neq("id", 0);
-  await supabase.from(token_table).insert(newTokens);
-  return newTokens;
-}
-
-app.post("/create-meeting", async (req, res) => {
-  const { branch } = req.body;
+  const { clientId, clientSecret } = getZoomCredentials(branch);
+  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
   try {
-    await refreshTokenIfNeeded(branch);
-    const { access_token } = await getTokens(branch);
-
-    const zoomRes = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        topic: `Instant Meeting for Branch ${branch}`,
-        type: 1,
-      }),
-    });
-
-    const data = await zoomRes.json();
-    res.json({ join_url: data.join_url });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post("/schedule-meeting", async (req, res) => {
-  const { branch, datetime } = req.body;
-  if (!branch || !datetime)
-    return res.status(400).json({ error: "Missing branch or datetime" });
-
-  try {
-    await refreshTokenIfNeeded(branch);
-    const { access_token } = await getTokens(branch);
-
-    const zoomRes = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        topic: `Scheduled Meeting for Branch ${branch}`,
-        type: 2,
-        start_time: new Date(datetime).toISOString(),
-        settings: {
-          join_before_host: true,
+    const tokenResponse = await fetch(
+      `https://zoom.us/oauth/token?grant_type=authorization_code&code=${code}&redirect_uri=${encodeURIComponent(
+        REDIRECT_URI
+      )}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${creds}`,
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-      }),
-    });
+      }
+    );
+    const tokenData = await tokenResponse.json();
+    if (!tokenData.access_token)
+      return res.status(500).send("Token exchange failed");
 
-    const data = await zoomRes.json();
-    res.json({ join_url: data.join_url });
+    await saveTokens(
+      branch,
+      tokenData.access_token,
+      tokenData.refresh_token,
+      Date.now() + tokenData.expires_in * 1000
+    );
+    res.send(
+      `<h3>Zoom Connected for Branch ${branch}</h3><p>You can close this window.</p>`
+    );
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error("Callback error:", err);
+    res.status(500).send("OAuth token exchange error");
   }
 });
+
+// Refresh tokens
+async function refreshTokenIfNeeded(branch) {
+  const tokenSet = await getTokens(branch);
+  if (!tokenSet) throw new Error(`No token for branch ${branch}`);
+
+  if (Date.now() < tokenSet.expires_at - 60000) return;
+
+  const { clientId, clientSecret } = getZoomCredentials(branch);
+  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  const response = await fetch(
+    `https://zoom.us/oauth/token?grant_type=refresh_token&refresh_token=${tokenSet.refresh_token}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${creds}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    }
+  );
+  const data = await response.json();
+  if (!data.access_token) throw new Error("Failed to refresh token");
+
+  await saveTokens(
+    branch,
+    data.access_token,
+    data.refresh_token,
+    Date.now() + data.expires_in * 1000
+  );
+}
+
+// Create instant meeting
+app.post("/create-meeting-a", async (req, res) => {
+  await createMeeting("A", req, res);
+});
+app.post("/create-meeting-b", async (req, res) => {
+  await createMeeting("B", req, res);
+});
+
+// Shared logic for meetings (instant or scheduled)
+async function createMeeting(branch, req, res) {
+  const { start_time, topic } = req.body || {};
+  try {
+    await refreshTokenIfNeeded(branch);
+    const { access_token } = await getTokens(branch);
+
+    const payload = {
+      topic: topic || `Meeting for ${branch}`,
+      type: start_time ? 2 : 1,
+      settings: { join_before_host: true },
+    };
+    if (start_time) {
+      payload.start_time = new Date(start_time).toISOString();
+      payload.duration = 60;
+    }
+
+    const apiRes = await fetch("https://api.zoom.us/v2/users/me/meetings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await apiRes.json();
+    if (data.join_url) return res.json({ join_url: data.join_url });
+    return res.status(500).json({ error: "Zoom API failed", details: data });
+  } catch (err) {
+    console.error(`Error meeting (${branch}):`, err);
+    res.status(500).json({ error: err.message });
+  }
+}
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server live on port ${PORT}`));
