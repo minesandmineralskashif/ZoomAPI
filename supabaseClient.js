@@ -1,12 +1,10 @@
-// supabaseClient.js
 const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // Secure key
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Fetch tokens for a given branch
 async function getTokens(branch) {
   const { data, error } = await supabase
     .from("tokens")
@@ -14,18 +12,24 @@ async function getTokens(branch) {
     .eq("branch", branch)
     .single();
 
-  if (error) return null;
+  if (error) {
+    console.error("Supabase getTokens error:", error);
+    return null;
+  }
   return data;
 }
 
-// Insert or update tokens
 async function saveTokens(branch, access_token, refresh_token, expires_at) {
-  await supabase.from("tokens").upsert({
+  const { error } = await supabase.from("tokens").upsert({
     branch,
     access_token,
     refresh_token,
     expires_at,
   });
+
+  if (error) {
+    console.error("Supabase saveTokens error:", error);
+  }
 }
 
 module.exports = {

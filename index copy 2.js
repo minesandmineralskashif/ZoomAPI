@@ -8,40 +8,56 @@ const { getTokens, saveTokens } = require("./supabaseClient");
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(express.static(__dirname)); // Serves static files like style.css
 
-const CLIENT_ID = process.env.ZOOM_CLIENT_ID;
-const CLIENT_SECRET = process.env.ZOOM_CLIENT_SECRET;
 const REDIRECT_URI = process.env.ZOOM_REDIRECT_URI;
 
-// Zoom OAuth URL
-app.get("/auth-url", (req, res) => {
-  const branch = req.query.branch;
-  if (!branch) return res.status(400).json({ error: "Missing 'branch'" });
+function getZoomCredentials(branch) {
+  if (branch === "B") {
+    return {
+      clientId: process.env.ZOOM2_CLIENT_ID,
+      clientSecret: process.env.ZOOM2_CLIENT_SECRET,
+    };
+  }
+  return {
+    clientId: process.env.ZOOM_CLIENT_ID,
+    clientSecret: process.env.ZOOM_CLIENT_SECRET,
+  };
+}
 
-  const url = `https://zoom.us/oauth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI
-  )}&state=${branch}`;
-  res.json({ url });
-});
 app.get("/", (req, res) => {
   res.send(`
     <html>
       <head>
         <title>Zoom Integration</title>
+        
+        <link rel="stylesheet" href="/styles.css" />
       </head>
-      <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-        <h1>Zoom OAuth Demo</h1>
+      <body>
+        <img src="/logo.jpg" alt="Zoom Integration Logo" class="logo" />
+
+        <h1>Zoom Meeting Mines and Minerals</h1>
         
         <div>
           <button onclick="window.location.href='/auth-url?branch=A'">
-            Authenticate Zoom (Branch A)
+            Authenticate Zoom (Branch A MITDGMM )
           </button>
         </div>
         
+        <div>
+          <button onclick="window.location.href='/auth-url?branch=B'">
+            Authenticate Zoom (Branch B IT Branch)
+          </button>
+        </div>
+
         <br/>
 
         <div>
-          <button onclick="createMeeting()">Create Zoom Meeting (Branch A)</button>
+          <button onclick="createMeeting('A')">Create Meeting (Branch A MITDGMM)</button>
+        </div>
+
+        <div>
+          <button onclick="createMeeting('B')">Create Meeting (Branch B IT Branch )</button>
         </div>
 
         <br/>
@@ -56,24 +72,19 @@ app.get("/", (req, res) => {
         </div>
 
         <script>
-          async function createMeeting() {
+          async function createMeeting(branch) {
             try {
-              const res = await fetch('/create-meeting-a', { method: 'POST' });
+              const res = await fetch('/create-meeting-' + branch.toLowerCase(), { method: 'POST' });
               const data = await res.json();
 
               if (data.join_url) {
-                // Open meeting in new tab
                 window.open(data.join_url, '_blank');
-
-                // Copy to clipboard
                 await navigator.clipboard.writeText(data.join_url);
-
-                // Show WhatsApp share button
                 const waLink = "https://wa.me/?text=" + encodeURIComponent("Join my Zoom meeting: " + data.join_url);
                 document.getElementById("whatsapp-link").href = waLink;
                 document.getElementById("whatsapp-share").style.display = "block";
               } else {
-                alert("Error creating meeting: " + (data.error || "Unknown error"));
+                alert("Error: " + (data.error || "Unknown"));
               }
             } catch (err) {
               console.error(err);
@@ -86,12 +97,24 @@ app.get("/", (req, res) => {
   `);
 });
 
-// Callback to exchange code for token
+app.get("/auth-url", (req, res) => {
+  const branch = req.query.branch;
+  if (!branch) return res.status(400).json({ error: "Missing 'branch'" });
+
+  const { clientId } = getZoomCredentials(branch);
+
+  const url = `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+    REDIRECT_URI
+  )}&state=${branch}`;
+  res.json({ url });
+});
+
 app.get("/zoom/callback", async (req, res) => {
   const { code, state: branch } = req.query;
   if (!code || !branch) return res.status(400).send("Missing code or branch");
 
-  const creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
+  const { clientId, clientSecret } = getZoomCredentials(branch);
+  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
   try {
     const tokenResponse = await fetch(
@@ -116,9 +139,7 @@ app.get("/zoom/callback", async (req, res) => {
         tokenData.refresh_token,
         Date.now() + tokenData.expires_in * 1000
       );
-      return res.send(
-        `<h2>Zoom connected for branch "${branch}"</h2><p>You can close this window.</p>`
-      );
+      return res.send(`<h2>Zoom connected for branch "${branch}"</h2><p>You can close this window.</p>`);
     }
 
     console.error("Token exchange failed:", tokenData);
@@ -129,14 +150,15 @@ app.get("/zoom/callback", async (req, res) => {
   }
 });
 
-// Refresh token if expired
 async function refreshTokenIfNeeded(branch) {
   const tokenSet = await getTokens(branch);
   if (!tokenSet) throw new Error(`No token for branch "${branch}"`);
 
   if (Date.now() < tokenSet.expires_at - 60000) return;
 
-  const creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
+  const { clientId, clientSecret } = getZoomCredentials(branch);
+  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
   const response = await fetch(
     `https://zoom.us/oauth/token?grant_type=refresh_token&refresh_token=${tokenSet.refresh_token}`,
     {
@@ -158,9 +180,9 @@ async function refreshTokenIfNeeded(branch) {
     Date.now() + data.expires_in * 1000
   );
 }
+
 app.post("/create-meeting-a", (req, res) => createMeetingFor("A", res));
 app.post("/create-meeting-b", (req, res) => createMeetingFor("B", res));
-app.post("/create-meeting-c", (req, res) => createMeetingFor("C", res));
 
 async function createMeetingFor(branch, res) {
   try {
@@ -184,59 +206,7 @@ async function createMeetingFor(branch, res) {
     res.status(500).json({ error: err.message });
   }
 }
-// So just call the following from each device once:
 
-// GET http://<your-backend>/auth-url?branch=A
-// GET http://<your-backend>/auth-url?branch=B
-// GET http://<your-backend>/auth-url?branch=C
-// Each will redirect to Zoom and save tokens separately.
-
-// Create meeting
-// app.post("/create-meeting", async (req, res) => {
-//   const { branch } = req.body;
-//   if (!branch) return res.status(400).json({ error: "Missing 'branch'" });
-
-//   const tokenSet = await getTokens(branch);
-//   if (!tokenSet)
-//     return res
-//       .status(401)
-//       .json({ error: `Branch "${branch}" is not authorized.` });
-
-//   try {
-//     await refreshTokenIfNeeded(branch);
-//     const { access_token } = await getTokens(branch);
-
-//     const response = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-//       method: "POST",
-//       headers: {
-//         Authorization: `Bearer ${access_token}`,
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({
-//         topic: `Meeting for ${branch}`,
-//         type: 1,
-//       }),
-//     });
-
-//     const data = await response.json();
-//     if (data.join_url) {
-//       res.json({ join_url: data.join_url });
-//     } else {
-//       res.status(500).json({ error: "Zoom API failed", details: data });
-//     }
-//   } catch (err) {
-//     console.error("Create meeting failed:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
-
-// Optional: Debug token route (only for dev)
-// app.get("/tokens/:branch", async (req, res) => {
-//   const branch = req.params.branch;
-//   const tokenSet = await getTokens(branch);
-//   if (tokenSet) res.json(tokenSet);
-//   else res.status(404).json({ error: "No token for this branch" });
-// });
 app.get("/tokens/:branch", async (req, res) => {
   const branch = req.params.branch;
   const tokenSet = await getTokens(branch);
@@ -246,7 +216,5 @@ app.get("/tokens/:branch", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(
-    `🚀 Use this link ot generate Token: https://zoomapi.onrender.com/auth-url?branch=A`
-  );
+  console.log(`✅ Visit http://localhost:${PORT}/ to authenticate Zoom accounts and create meetings`);
 });

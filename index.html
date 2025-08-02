@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Zoom Scheduler</title>
+  </head>
+  <body>
+    <h1>Create Zoom Meeting</h1>
+
+    <div>
+      <label>Branch A Start Time:</label>
+      <input type="datetime-local" id="start-time-a" />
+      <button onclick="createMeeting('A')">Create Meeting (Branch A)</button>
+    </div>
+
+    <div>
+      <label>Branch B Start Time:</label>
+      <input type="datetime-local" id="start-time-b" />
+      <button onclick="createMeeting('B')">Create Meeting (Branch B)</button>
+    </div>
+
+    <div id="whatsapp-share" style="display: none; margin-top: 10px">
+      <a id="whatsapp-link" target="_blank">Share via WhatsApp</a>
+    </div>
+
+    <script>
+      const API_BASE = "https://zoom.onrender.com";
+
+      async function createMeeting(branch) {
+        const timeInput = document.getElementById(
+          `start-time-${branch.toLowerCase()}`
+        );
+        const start_time = timeInput?.value || null;
+
+        const res = await fetch(
+          `${API_BASE}/create-meeting-${branch.toLowerCase()}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start_time }),
+          }
+        );
+
+        const data = await res.json();
+        if (data.join_url) {
+          window.open(data.join_url, "_blank");
+          await navigator.clipboard.writeText(data.join_url);
+          const waLink =
+            "https://wa.me/?text=" +
+            encodeURIComponent("Join my Zoom meeting: " + data.join_url);
+          document.getElementById("whatsapp-link").href = waLink;
+          document.getElementById("whatsapp-share").style.display = "block";
+        } else {
+          alert("Failed to create meeting");
+          console.error(data);
+        }
+      }
+    </script>
+  </body>
+</html>
