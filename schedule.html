@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Schedule Zoom Meeting</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <h1>Schedule Zoom Meeting</h1>
+
+    <div>
+      <label for="branch">Select Branch (Host):</label>
+      <select id="branch">
+        <option value="A">Branch A</option>
+        <option value="B">Branch B</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="title">Meeting Title:</label>
+      <input type="text" id="title" placeholder="Enter meeting title" />
+    </div>
+
+    <div>
+      <label for="start-time">Start Time:</label>
+      <input type="datetime-local" id="start-time" />
+    </div>
+
+    <button onclick="scheduleMeeting()">Schedule Meeting</button>
+
+    <div id="whatsapp-share" style="display: none; margin-top: 20px">
+      <a id="whatsapp-link" target="_blank">
+        <button>Share on WhatsApp</button>
+      </a>
+      <p>Link copied to clipboard!</p>
+    </div>
+
+    <script>
+      async function scheduleMeeting() {
+        const branch = document.getElementById("branch").value;
+        const start_time = document.getElementById("start-time").value;
+        const topic = document.getElementById("title").value;
+
+        if (!start_time || !topic) {
+          alert("Please enter both title and time.");
+          return;
+        }
+
+        const res = await fetch(`/create-meeting-${branch.toLowerCase()}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start_time, topic }),
+        });
+
+        const data = await res.json();
+        if (data.join_url) {
+          window.open(data.join_url, "_blank");
+          await navigator.clipboard.writeText(data.join_url);
+
+          const waLink =
+            "https://wa.me/?text=" +
+            encodeURIComponent("Join my Zoom meeting: " + data.join_url);
+          document.getElementById("whatsapp-link").href = waLink;
+          document.getElementById("whatsapp-share").style.display = "block";
+        } else {
+          alert("Failed to schedule meeting.");
+          console.error(data);
+        }
+      }
+    </script>
+  </body>
+</html>

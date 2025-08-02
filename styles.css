@@ -1,58 +1,86 @@
-body {
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f4f8fb;
-  text-align: center;
-  padding-top: 50px;
+}
+
+body {
   margin: 0;
+  padding: 2rem;
+  background: #f5f7fa;
+  color: #333;
 }
 
-h1 {
-  color: #222;
-  font-size: 2.5rem;
-  margin-bottom: 30px;
+h1, h2 {
+  color: #2c3e50;
 }
 
+/* Layout containers */
+div {
+  margin-bottom: 1.5rem;
+}
+
+/* Labels and inputs */
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+input, select {
+  padding: 0.5rem;
+  width: 100%;
+  max-width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+/* Buttons */
 button {
-  background-color: #007bff;
+  background-color: #2d8cff;
   color: white;
-  padding: 12px 24px;
+  padding: 0.6rem 1.2rem;
   border: none;
   border-radius: 6px;
-  font-size: 1rem;
-  margin: 10px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  margin-top: 0.3rem;
 }
 
 button:hover {
-  background-color: #0056b3;
+  background-color: #1c6fe0;
 }
 
-button:active {
-  transform: scale(0.97);
+button:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+/* WhatsApp share box */
+#whatsapp-share {
+  background: #e9f7ef;
+  border-left: 5px solid #25d366;
+  padding: 1rem;
+  border-radius: 6px;
 }
 
 #whatsapp-link button {
-  background-color: #25D366;
-  font-weight: bold;
+  background-color: #25d366;
 }
 
-#whatsapp-share p {
-  color: green;
-  font-size: 1.1rem;
+#whatsapp-link button:hover {
+  background-color: #1da851;
 }
 
+/* Responsive tweaks */
 @media (max-width: 600px) {
-  button {
-    width: 80%;
-    font-size: 1.1rem;
+  body {
+    padding: 1rem;
   }
-}
 
-.logo {
-  width: 120px;
-  height: auto;
-  margin-top: 20px;
-  margin-bottom: 20px;
-  border-radius: 10px;
+  input, select, button {
+    width: 100%;
+  }
 }
